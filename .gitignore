@@ -69,5 +69,14 @@ config/service-account-key.json
 
 # Production specific files
 .env.production.local
+.env.cloudrun.local
 ssl/
 certs/
+
+# Docker and Cloud Build
+.dockerignore
+cloudbuild.yaml.bak
+
+# Deployment logs
+deploy.log
+build.log
