@@ -3,7 +3,6 @@ const router = express.Router();
 
 // Import route modules
 const authRoutes = require('./auth');
-const categoryRoutes = require('./categories');
 const transactionRoutes = require('./transactions');
 
 // Health check endpoint
@@ -25,22 +24,20 @@ router.get('/', (req, res) => {
     description: 'API Backend untuk Aplikasi Manajemen Keuangan Pribadi',
     endpoints: {
       auth: '/api/auth',
-      categories: '/api/categories',
       transactions: '/api/transactions',
       health: '/api/health'
     },
     features: [
-      'Input pemasukan/pengeluaran',
-      'Kategori transaksi',
+      'Input pemasukan/pengeluaran (income/expense)',
+      'Sistem kategori sederhana',
       'Laporan bulanan',
-      'Filter by date'
+      'Filter by date dan type'
     ]
   });
 });
 
 // Mount route modules
 router.use('/auth', authRoutes);
-router.use('/categories', categoryRoutes);
 router.use('/transactions', transactionRoutes);
 
 module.exports = router;

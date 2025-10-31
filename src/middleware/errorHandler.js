@@ -1,6 +1,9 @@
 // Global error handler middleware
 const errorHandler = (err, req, res, next) => {
-  console.error('Error occurred:', err);
+  // Only log full error details in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.error('Error occurred:', err);
+  }
 
   // Default error
   let error = {
@@ -40,13 +43,19 @@ const errorHandler = (err, req, res, next) => {
     error.statusCode = 400;
   }
 
-  // Send error response
-  res.status(error.statusCode).json({
+  // Send response
+  const response = {
     success: false,
     message: error.message,
-    ...(error.errors && { errors: error.errors }),
-    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
-  });
+    errors: error.errors || []
+  };
+  
+  // Only include stack trace in development
+  if (process.env.NODE_ENV !== 'production') {
+    response.stack = err.stack;
+  }
+  
+  res.status(error.statusCode).json(response);
 };
 
 // Handle 404 errors

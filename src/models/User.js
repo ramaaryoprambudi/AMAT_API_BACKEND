@@ -6,7 +6,7 @@ class User {
   // Get all users
   static async getAll() {
     const query = `
-      SELECT id, uid, nama, email, url_foto, dibuat_pada 
+      SELECT id, uid, nama, email, url_foto, foto_filename, dibuat_pada 
       FROM users 
       ORDER BY dibuat_pada DESC
     `;
@@ -16,7 +16,7 @@ class User {
   // Get user by ID
   static async getById(id) {
     const query = `
-      SELECT id, uid, nama, email, url_foto, dibuat_pada 
+      SELECT id, uid, nama, email, url_foto, foto_filename, dibuat_pada 
       FROM users 
       WHERE id = ?
     `;
@@ -26,7 +26,7 @@ class User {
   // Get user by UID
   static async getByUid(uid) {
     const query = `
-      SELECT id, uid, nama, email, url_foto, dibuat_pada 
+      SELECT id, uid, nama, email, url_foto, foto_filename, dibuat_pada 
       FROM users 
       WHERE uid = ?
     `;
@@ -36,7 +36,7 @@ class User {
   // Get user by email (for login - includes password)
   static async getByEmail(email) {
     const query = `
-      SELECT id, uid, nama, email, password, url_foto, dibuat_pada 
+      SELECT id, uid, nama, email, password, url_foto, foto_filename, dibuat_pada 
       FROM users 
       WHERE email = ?
     `;
@@ -59,7 +59,7 @@ class User {
 
   // Create new user
   static async create(userData) {
-    const { nama, email, password, url_foto = null } = userData;
+    const { nama, email, password, url_foto = null, foto_filename = null } = userData;
     
     // Generate unique UID
     const uid = uuidv4();
@@ -69,11 +69,11 @@ class User {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
     
     const query = `
-      INSERT INTO users (uid, nama, email, password, url_foto) 
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO users (uid, nama, email, password, url_foto, foto_filename) 
+      VALUES (?, ?, ?, ?, ?, ?)
     `;
     
-    const insertId = await db.insert(query, [uid, nama, email, hashedPassword, url_foto]);
+    const insertId = await db.insert(query, [uid, nama, email, hashedPassword, url_foto, foto_filename]);
     
     // Return user without password
     return await this.getById(insertId);
@@ -81,15 +81,15 @@ class User {
 
   // Update user
   static async update(id, userData) {
-    const { nama, email, url_foto } = userData;
+    const { nama, email, url_foto, foto_filename } = userData;
     
     const query = `
       UPDATE users 
-      SET nama = ?, email = ?, url_foto = ?
+      SET nama = ?, email = ?, url_foto = ?, foto_filename = ?
       WHERE id = ?
     `;
     
-    const affectedRows = await db.update(query, [nama, email, url_foto, id]);
+    const affectedRows = await db.update(query, [nama, email, url_foto, foto_filename, id]);
     
     if (affectedRows === 0) {
       return null;
@@ -128,7 +128,7 @@ class User {
   // Search users
   static async search(searchTerm, limit = 50) {
     const query = `
-      SELECT id, uid, nama, email, url_foto, dibuat_pada 
+      SELECT id, uid, nama, email, url_foto, foto_filename, dibuat_pada 
       FROM users 
       WHERE (nama LIKE ? OR email LIKE ?)
       ORDER BY nama ASC

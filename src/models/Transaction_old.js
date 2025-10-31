@@ -63,8 +63,10 @@ class Transaction {
         }
       }
 
+      console.log('Generated query:', query);
       return await db.getMany(query, []);
     } catch (error) {
+      console.error('Error in getAll:', error);
       return [];
     }
   }
@@ -118,12 +120,14 @@ class Transaction {
         WHERE id = ${parseInt(id)}
       `;
       
+      console.log('Update query:', query);
       const affectedRows = await db.update(query, []);
       if (affectedRows === 0) {
         return null;
       }
       return await this.getById(id);
     } catch (error) {
+      console.error('Error in update:', error);
       throw error;
     }
   }
@@ -132,9 +136,11 @@ class Transaction {
   static async delete(id) {
     try {
       const query = `DELETE FROM transactions WHERE id = ${parseInt(id)}`;
+      console.log('Delete query:', query);
       const affectedRows = await db.remove(query, []);
       return affectedRows > 0;
     } catch (error) {
+      console.error('Error in delete:', error);
       throw error;
     }
   }
@@ -189,13 +195,15 @@ class Transaction {
   static async getMonthlyReport(month, year) {
     const query = `
       SELECT 
-        type,
-        COUNT(id) as transaction_count,
-        SUM(amount) as total_amount
-      FROM transactions
-      WHERE MONTH(transaction_date) = ? AND YEAR(transaction_date) = ?
-      GROUP BY type
-      ORDER BY type, total_amount DESC
+        t.type,
+        c.name as category_name,
+        COUNT(t.id) as transaction_count,
+        SUM(t.amount) as total_amount
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      WHERE MONTH(t.transaction_date) = ? AND YEAR(t.transaction_date) = ?
+      GROUP BY t.type, c.id, c.name
+      ORDER BY t.type, total_amount DESC
     `;
     return await db.getMany(query, [month, year]);
   }
@@ -235,15 +243,17 @@ class Transaction {
   static async getDailyTransactionsByUser(date, userId) {
     const query = `
       SELECT 
-        id,
-        title,
-        amount,
-        type,
-        description,
-        transaction_date
-      FROM transactions
-      WHERE transaction_date = ? AND user_id = ?
-      ORDER BY created_at DESC
+        t.id,
+        t.title,
+        t.amount,
+        t.type,
+        t.description,
+        t.transaction_date,
+        c.name as category_name
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      WHERE t.transaction_date = ? AND t.user_id = ?
+      ORDER BY t.created_at DESC
     `;
     return await db.getMany(query, [date, userId]);
   }
@@ -252,15 +262,17 @@ class Transaction {
   static async getDailyTransactions(date) {
     const query = `
       SELECT 
-        id,
-        title,
-        amount,
-        type,
-        description,
-        transaction_date
-      FROM transactions
-      WHERE transaction_date = ?
-      ORDER BY created_at DESC
+        t.id,
+        t.title,
+        t.amount,
+        t.type,
+        t.description,
+        t.transaction_date,
+        c.name as category_name
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      WHERE t.transaction_date = ?
+      ORDER BY t.created_at DESC
     `;
     return await db.getMany(query, [date]);
   }
@@ -303,32 +315,39 @@ class Transaction {
   static async search(searchTerm, filters = {}) {
     let query = `
       SELECT 
-        id,
-        title,
-        amount,
-        type,
-        description,
-        transaction_date
-      FROM transactions
-      WHERE (title LIKE ? OR description LIKE ?)
+        t.id,
+        t.title,
+        t.amount,
+        t.type,
+        t.description,
+        t.transaction_date,
+        c.name as category_name
+      FROM transactions t
+      LEFT JOIN categories c ON t.category_id = c.id
+      WHERE (t.title LIKE ? OR t.description LIKE ? OR c.name LIKE ?)
     `;
     
     const searchPattern = `%${searchTerm}%`;
-    const params = [searchPattern, searchPattern];
+    const params = [searchPattern, searchPattern, searchPattern];
 
     // Always filter by user_id if provided
     if (filters.user_id) {
-      query += ' AND user_id = ?';
+      query += ' AND t.user_id = ?';
       params.push(filters.user_id);
     }
 
     // Add additional filters
     if (filters.type) {
-      query += ' AND type = ?';
+      query += ' AND t.type = ?';
       params.push(filters.type);
     }
 
-    query += ' ORDER BY transaction_date DESC, created_at DESC';
+    if (filters.category_id) {
+      query += ' AND t.category_id = ?';
+      params.push(filters.category_id);
+    }
+
+    query += ' ORDER BY t.transaction_date DESC, t.created_at DESC';
     
     if (filters.limit) {
       query += ' LIMIT ?';
@@ -371,16 +390,19 @@ class Transaction {
     try {
       const query = `
         SELECT 
-          id,
-          title,
-          amount,
-          type,
-          description,
-          transaction_date,
-          created_at
-        FROM transactions
-        WHERE user_id = ${parseInt(userId)}
-        ORDER BY created_at DESC, id DESC
+          t.id,
+          t.title,
+          t.amount,
+          t.type,
+          t.description,
+          t.transaction_date,
+          t.created_at,
+          c.name as category_name,
+          c.type as category_type
+        FROM transactions t
+        LEFT JOIN categories c ON t.category_id = c.id
+        WHERE t.user_id = ${parseInt(userId)}
+        ORDER BY t.created_at DESC, t.id DESC
         LIMIT ${parseInt(limit)}
       `;
       
@@ -394,26 +416,26 @@ class Transaction {
   // Get total count of transactions for pagination
   static async getTotalCount(filters = {}) {
     try {
-      let query = 'SELECT COUNT(*) as total FROM transactions';
+      let query = 'SELECT COUNT(*) as total FROM transactions t';
       const conditions = [];
 
       // Filter by user
       if (filters.user_id) {
-        conditions.push(`user_id = ${parseInt(filters.user_id)}`);
+        conditions.push(`t.user_id = ${parseInt(filters.user_id)}`);
       }
 
       // Filter by type
       if (filters.type) {
-        conditions.push(`type = '${filters.type}'`);
+        conditions.push(`t.type = '${filters.type}'`);
       }
 
       // Filter by date range
       if (filters.start_date) {
-        conditions.push(`transaction_date >= '${filters.start_date}'`);
+        conditions.push(`t.transaction_date >= '${filters.start_date}'`);
       }
 
       if (filters.end_date) {
-        conditions.push(`transaction_date <= '${filters.end_date}'`);
+        conditions.push(`t.transaction_date <= '${filters.end_date}'`);
       }
 
       // Add WHERE conditions
@@ -421,9 +443,11 @@ class Transaction {
         query += ' WHERE ' + conditions.join(' AND ');
       }
 
+      console.log('getTotalCount query:', query);
       const result = await db.getOne(query, []);
       return result ? result.total : 0;
     } catch (error) {
+      console.error('Error in getTotalCount:', error);
       return 0;
     }
   }

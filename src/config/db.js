@@ -11,7 +11,9 @@ const promisePool = pool.promise();
 const testConnection = async () => {
   try {
     const connection = await promisePool.getConnection();
-    console.log('✅ Database connected successfully');
+    if (process.env.NODE_ENV !== 'production') {
+      console.log('✅ Database connected successfully');
+    }
     connection.release();
     return true;
   } catch (error) {

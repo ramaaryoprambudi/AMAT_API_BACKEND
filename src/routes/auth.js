@@ -4,6 +4,7 @@ const AuthController = require('../controllers/authController');
 const { authenticateToken, rateLimiter } = require('../middleware/auth');
 const { authValidation } = require('../middleware/validation');
 const { asyncHandler } = require('../middleware/errorHandler');
+const { uploadProfilePhoto, optionalUploadProfilePhoto } = require('../middleware/upload');
 
 // Rate limiting for auth endpoints - Relaxed for development/testing
 const authRateLimit = rateLimiter(1000, 15 * 60 * 1000); // 1000 requests per 15 minutes
@@ -13,6 +14,7 @@ const authRateLimit = rateLimiter(1000, 15 * 60 * 1000); // 1000 requests per 15
 // POST /api/auth/register - Register new user
 router.post('/register',
   // authRateLimit, // Disabled for development testing
+  optionalUploadProfilePhoto,
   authValidation.register,
   asyncHandler(AuthController.register)
 );
@@ -35,6 +37,7 @@ router.get('/profile',
 // PUT /api/auth/profile - Update user profile
 router.put('/profile',
   authenticateToken,
+  optionalUploadProfilePhoto,
   authValidation.updateProfile,
   asyncHandler(AuthController.updateProfile)
 );

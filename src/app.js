@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const db = require('./config/db');
 const routes = require('./routes');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
+const { directoryProtection, handleUploadsRoot, logFileAccess } = require('./middleware/directoryProtection');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -22,9 +23,20 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logging middleware
+// Directory protection middleware (before static file serving)
+app.use(handleUploadsRoot);
+app.use(logFileAccess);
+app.use(directoryProtection);
+
+// Serve static files (uploaded photos)
+app.use('/uploads', express.static('uploads'));
+
+// Request logging middleware (production ready)
 app.use((req, res, next) => {
-  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  // Only log in development
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  }
   next();
 });
 
@@ -61,14 +73,15 @@ const startServer = async () => {
 
     // Start HTTP server
     app.listen(PORT, () => {
-      console.log('\n🚀 Personal Finance API Server Started');
-      console.log(`📍 Server running on port ${PORT}`);
-      console.log(`🌐 API URL: http://localhost:${PORT}`);
-      console.log(`📚 API Documentation: http://localhost:${PORT}/api`);
-      console.log(`💚 Health Check: http://localhost:${PORT}/api/health`);
-      console.log(`📊 Categories: http://localhost:${PORT}/api/categories`);
-      console.log(`💰 Transactions: http://localhost:${PORT}/api/transactions`);
-      console.log('\n✅ Server is ready for connections!\n');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('\n🚀 Personal Finance API Server Started');
+        console.log(`📍 Server running on port ${PORT}`);
+        console.log(`🌐 API URL: http://localhost:${PORT}`);
+        console.log(`📚 API Documentation: http://localhost:${PORT}/api`);
+        console.log(`💚 Health Check: http://localhost:${PORT}/api/health`);
+        console.log(` Transactions: http://localhost:${PORT}/api/transactions`);
+        console.log('\n✅ Server is ready for connections!\n');
+      }
     });
 
   } catch (error) {
@@ -92,12 +105,16 @@ process.on('uncaughtException', (err) => {
 
 // Graceful shutdown
 const gracefulShutdown = (signal) => {
-  console.log(`\n${signal} received. Shutting down gracefully...`);
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(`\n${signal} received. Shutting down gracefully...`);
+  }
   
   // Close database connections
   if (db.pool) {
     db.pool.end(() => {
-      console.log('Database connections closed.');
+      if (process.env.NODE_ENV !== 'production') {
+        console.log('Database connections closed.');
+      }
       process.exit(0);
     });
   } else {

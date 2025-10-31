@@ -1,0 +1,74 @@
+// PM2 Ecosystem Configuration for Production
+// Copy this file to your production server
+// Do not commit this file to git (it's in .gitignore)
+
+module.exports = {
+  apps: [{
+    name: 'personal-finance-api',
+    script: 'src/app.js',
+    instances: 'max', // Use all CPU cores
+    exec_mode: 'cluster',
+    
+    // Environment variables
+    env: {
+      NODE_ENV: 'production',
+      PORT: 3000
+    },
+    
+    // Logging
+    error_file: './logs/err.log',
+    out_file: './logs/out.log',
+    log_file: './logs/combined.log',
+    time: true,
+    
+    // Memory and restart settings
+    max_memory_restart: '512M',
+    restart_delay: 4000,
+    max_restarts: 10,
+    min_uptime: '10s',
+    
+    // Watch and ignore settings
+    watch: false,
+    ignore_watch: [
+      'node_modules',
+      'logs',
+      'uploads',
+      '.git'
+    ],
+    
+    // Advanced settings
+    node_args: '--max_old_space_size=512',
+    
+    // Auto restart on file changes (disable in production)
+    autorestart: true,
+    
+    // Merge logs from all instances
+    merge_logs: true,
+    
+    // Kill timeout
+    kill_timeout: 5000,
+    
+    // Listen timeout
+    listen_timeout: 8000,
+    
+    // Source map support
+    source_map_support: false,
+    
+    // Instance variables
+    instance_var: 'INSTANCE_ID'
+  }],
+
+  // Deployment configuration (optional)
+  deploy: {
+    production: {
+      user: 'ubuntu',
+      host: 'your-server-ip',
+      ref: 'origin/main',
+      repo: 'https://github.com/ramaaryoprambudi/AMAT_API_BACKEND.git',
+      path: '/var/www/personal-finance-api',
+      'pre-deploy-local': '',
+      'post-deploy': 'npm install --production && pm2 reload ecosystem.config.js --env production',
+      'pre-setup': ''
+    }
+  }
+};

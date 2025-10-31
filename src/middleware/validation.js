@@ -53,35 +53,138 @@ const transactionValidation = {
       .withMessage('Title is required')
       .isLength({ min: 2, max: 255 })
       .withMessage('Title must be between 2 and 255 characters')
-      .trim(),
+      .trim()
+      .escape() // Escape HTML untuk prevent XSS
+      .custom((value) => {
+        // Check for SQL injection patterns
+        const sqlPatterns = [
+          /('|(\\)|;|--|\/\*|\*\/|union|select|insert|update|delete|drop|create|alter)/i,
+          /(script|javascript|vbscript|onload|onerror|onclick)/i
+        ];
+        
+        if (sqlPatterns.some(pattern => pattern.test(value))) {
+          throw new Error('Title contains invalid characters');
+        }
+        
+        // Only allow alphanumeric, spaces, and common punctuation
+        if (!/^[a-zA-Z0-9\s\-_.(),!?\u00C0-\u017F]+$/.test(value)) {
+          throw new Error('Title contains forbidden characters');
+        }
+        
+        return true;
+      }),
     
     body('amount')
       .notEmpty()
       .withMessage('Amount is required')
-      .isFloat({ min: 0.01 })
-      .withMessage('Amount must be a positive number greater than 0'),
+      .isFloat({ min: 1000, max: 999999999.99 })
+      .withMessage('Amount must be between Rp 1,000 and Rp 999,999,999.99')
+      .custom((value) => {
+        const numValue = parseFloat(value);
+        
+        // Check minimum amount 1000 rupiah
+        if (numValue < 1000) {
+          throw new Error('Minimum transaction amount is Rp 1,000');
+        }
+        
+        // Prevent scientific notation
+        if (value.toString().includes('e') || value.toString().includes('E')) {
+          throw new Error('Scientific notation not allowed');
+        }
+        
+        // Check decimal places
+        const decimalPlaces = (value.toString().split('.')[1] || '').length;
+        if (decimalPlaces > 2) {
+          throw new Error('Maximum 2 decimal places allowed');
+        }
+        
+        // Ensure positive number
+        if (numValue <= 0) {
+          throw new Error('Amount must be greater than zero');
+        }
+        
+        return true;
+      }),
     
     body('type')
       .notEmpty()
       .withMessage('Type is required')
       .isIn(['income', 'expense'])
-      .withMessage('Type must be either income or expense'),
+      .withMessage('Type must be either income or expense')
+      .custom((value) => {
+        // Strict type checking
+        if (typeof value !== 'string') {
+          throw new Error('Type must be a string');
+        }
+        return true;
+      }),
     
-    body('category_id')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('Category ID must be a positive integer'),
+
     
     body('description')
       .optional()
       .isLength({ max: 500 })
       .withMessage('Description must not exceed 500 characters')
-      .trim(),
+      .trim()
+      .escape() // Escape HTML untuk prevent XSS
+      .custom((value) => {
+        if (value) {
+          // Check for malicious patterns
+          const maliciousPatterns = [
+            /<script/i,
+            /javascript:/i,
+            /on\w+\s*=/i,
+            /data:text\/html/i,
+            /vbscript:/i,
+            /('|(\\)|;|--|\/\*|\*\/|union|select|insert|update|delete|drop)/i
+          ];
+          
+          if (maliciousPatterns.some(pattern => pattern.test(value))) {
+            throw new Error('Description contains potentially harmful content');
+          }
+        }
+        return true;
+      }),
     
     body('transaction_date')
       .optional()
       .isDate({ format: 'YYYY-MM-DD' })
       .withMessage('Transaction date must be in YYYY-MM-DD format')
+      .custom((value) => {
+        if (value) {
+          const date = new Date(value);
+          const today = new Date();
+          const minDate = new Date('1900-01-01');
+          const maxDate = new Date();
+          maxDate.setFullYear(today.getFullYear() + 1);
+          
+          if (date < minDate || date > maxDate) {
+            throw new Error('Invalid transaction date range');
+          }
+        }
+        return true;
+      }),
+
+    // Additional security validation for request payload
+    body()
+      .custom((value, { req }) => {
+        // Check payload size
+        const jsonString = JSON.stringify(req.body);
+        if (jsonString.length > 5000) {
+          throw new Error('Request payload too large');
+        }
+        
+        // Check for unexpected fields
+        const allowedFields = ['title', 'amount', 'type', 'description', 'transaction_date'];
+        const receivedFields = Object.keys(req.body);
+        const unexpectedFields = receivedFields.filter(field => !allowedFields.includes(field));
+        
+        if (unexpectedFields.length > 0) {
+          throw new Error(`Unexpected fields detected: ${unexpectedFields.join(', ')}`);
+        }
+        
+        return true;
+      })
   ],
 
   update: [
@@ -95,8 +198,18 @@ const transactionValidation = {
     body('amount')
       .notEmpty()
       .withMessage('Amount is required')
-      .isFloat({ min: 0.01 })
-      .withMessage('Amount must be a positive number greater than 0'),
+      .isFloat({ min: 1000, max: 999999999.99 })
+      .withMessage('Amount must be between Rp 1,000 and Rp 999,999,999.99')
+      .custom((value) => {
+        const numValue = parseFloat(value);
+        
+        // Check minimum amount 1000 rupiah
+        if (numValue < 1000) {
+          throw new Error('Minimum transaction amount is Rp 1,000');
+        }
+        
+        return true;
+      }),
     
     body('type')
       .notEmpty()
@@ -104,10 +217,7 @@ const transactionValidation = {
       .isIn(['income', 'expense'])
       .withMessage('Type must be either income or expense'),
     
-    body('category_id')
-      .optional()
-      .isInt({ min: 1 })
-      .withMessage('Category ID must be a positive integer'),
+
     
     body('description')
       .optional()
@@ -148,12 +258,8 @@ const authValidation = {
       .isLength({ min: 8 })
       .withMessage('Password must be at least 8 characters long')
       .matches(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/)
-      .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'),
-    
-    body('url_foto')
-      .optional()
-      .isURL()
-      .withMessage('URL foto must be a valid URL')
+      .withMessage('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character')
+    // File upload akan dihandle oleh multer middleware
   ],
 
   login: [
@@ -182,12 +288,8 @@ const authValidation = {
       .withMessage('Please provide a valid email')
       .normalizeEmail()
       .isLength({ max: 100 })
-      .withMessage('Email must not exceed 100 characters'),
-    
-    body('url_foto')
-      .optional()
-      .isURL()
-      .withMessage('URL foto must be a valid URL')
+      .withMessage('Email must not exceed 100 characters')
+    // File upload akan dihandle oleh multer middleware
   ],
 
   changePassword: [

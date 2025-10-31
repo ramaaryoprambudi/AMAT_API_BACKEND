@@ -8,14 +8,20 @@ const { authenticateToken, checkResourceOwnership } = require('../middleware/aut
 // All transaction routes require authentication
 router.use(authenticateToken);
 
+// GET /api/transactions/dashboard - Get balance and recent activity
+router.get('/dashboard', asyncHandler(TransactionController.getDashboard));
+
+// GET /api/transactions/history - Get transaction history with formatted date/time
+router.get('/history', asyncHandler(TransactionController.getTransactionHistory));
+
 // GET /api/transactions - Get all transactions (with filters)
 router.get('/', asyncHandler(TransactionController.getAllTransactions));
 
 // GET /api/transactions/search - Search transactions
 router.get('/search', asyncHandler(TransactionController.searchTransactions));
 
-// GET /api/transactions/report - Get monthly report
-router.get('/report', asyncHandler(TransactionController.getMonthlyReport));
+// GET /api/transactions/report/monthly - Get monthly report
+router.get('/report/monthly', asyncHandler(TransactionController.getMonthlyReport));
 
 // GET /api/transactions/statistics - Get transaction statistics
 router.get('/statistics', asyncHandler(TransactionController.getStatistics));

@@ -1,16 +1,158 @@
 const Transaction = require('../models/Transaction');
-const Category = require('../models/Category');
 const { validationResult } = require('express-validator');
 const moment = require('moment');
 
 class TransactionController {
+  // Get dashboard data (Balance, Cash In/Out, Recent Activity, User Name)
+  static async getDashboard(req, res) {
+    try {
+      const userId = req.user.id;
+      const User = require('../models/User');
+      
+      // Get user information
+      const userInfo = await User.getById(userId);
+      
+      // Get balance (total income - total expenses)
+      const balanceData = await Transaction.getBalance(userId);
+      
+      // Get recent activity (last 10 transactions)
+      const recentActivity = await Transaction.getRecentActivity(userId, 10);
+      
+      res.json({
+        success: true,
+        message: 'Dashboard data retrieved successfully',
+        data: {
+          user_name: userInfo.nama || userInfo.name || 'User',
+          balance: balanceData.balance || 0,
+          cash_in: balanceData.total_income || 0,
+          cash_out: balanceData.total_expense || 0,
+          recent_activity: recentActivity || []
+        }
+      });
+    } catch (error) {
+      console.error('Error getting dashboard:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve dashboard data',
+        error: error.message
+      });
+    }
+  }
+
+  // Get transaction history with formatted date and time
+  static async getTransactionHistory(req, res) {
+    try {
+      const userId = req.user.id;
+      const { page = 1, limit = 20, type, start_date, end_date } = req.query;
+      
+      // Build filters
+      const filters = {
+        user_id: userId,
+        limit: parseInt(limit),
+        offset: (parseInt(page) - 1) * parseInt(limit)
+      };
+
+      // Add optional filters
+      if (type && ['income', 'expense'].includes(type)) {
+        filters.type = type;
+      }
+      
+      if (start_date && moment(start_date, 'YYYY-MM-DD', true).isValid()) {
+        filters.start_date = start_date;
+      }
+      
+      if (end_date && moment(end_date, 'YYYY-MM-DD', true).isValid()) {
+        filters.end_date = end_date;
+      }
+
+      // Get transactions
+      const transactions = await Transaction.getAll(filters);
+      
+      // Format response for history with detailed date/time info
+      const formattedHistory = transactions.map(transaction => {
+        const createdAt = moment(transaction.created_at);
+        const transactionDate = moment(transaction.transaction_date);
+        
+        return {
+          id: transaction.id,
+          amount: parseFloat(transaction.amount),
+          description: transaction.description || transaction.title,
+          title: transaction.title,
+          type: transaction.type,
+          category_name: transaction.category_name,
+          
+          // Date and time details
+          transaction_date: transactionDate.format('YYYY-MM-DD'),
+          day: transactionDate.format('DD'),
+          month: transactionDate.format('MM'),
+          month_name: transactionDate.format('MMMM'),
+          year: transactionDate.format('YYYY'),
+          
+          // Creation time details
+          created_at: createdAt.format('YYYY-MM-DD HH:mm:ss'),
+          created_time: createdAt.format('HH:mm:ss'),
+          created_hour: createdAt.format('HH'),
+          created_minute: createdAt.format('mm'),
+          
+          // Formatted displays
+          amount_formatted: new Intl.NumberFormat('id-ID', {
+            style: 'currency',
+            currency: 'IDR'
+          }).format(transaction.amount),
+          
+          date_formatted: transactionDate.format('DD MMMM YYYY'),
+          time_formatted: createdAt.format('HH:mm'),
+          datetime_formatted: createdAt.format('DD MMM YYYY, HH:mm')
+        };
+      });
+
+      // Get total count for pagination
+      const totalTransactions = await Transaction.getTotalCount({ user_id: userId, type, start_date, end_date });
+      const totalPages = Math.ceil(totalTransactions / parseInt(limit));
+
+      res.json({
+        success: true,
+        message: 'Transaction history retrieved successfully',
+        data: {
+          transactions: formattedHistory,
+          pagination: {
+            current_page: parseInt(page),
+            total_pages: totalPages,
+            total_items: totalTransactions,
+            items_per_page: parseInt(limit),
+            has_next: parseInt(page) < totalPages,
+            has_prev: parseInt(page) > 1
+          },
+          filters: {
+            type: type || 'all',
+            start_date: start_date || null,
+            end_date: end_date || null
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error getting transaction history:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to retrieve transaction history',
+        error: error.message
+      });
+    }
+  }
+
   // Get all transactions with filters
   static async getAllTransactions(req, res) {
     try {
+      const { type, category_id, start_date, end_date, limit, offset } = req.query;
+      
       const filters = {
         user_id: req.user.id,
-        start_date: start_date,
-        end_date: end_date
+        type,
+        category_id,
+        start_date,
+        end_date,
+        limit: limit || 100,
+        offset: offset || 0
       };
 
       // Remove undefined values
@@ -20,7 +162,7 @@ class TransactionController {
         }
       });
 
-      const stats = await Transaction.getStatistics(filters);
+      const transactions = await Transaction.getAll(filters);
 
       res.json({
         success: true,
@@ -73,6 +215,9 @@ class TransactionController {
       // Check validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+        // Log security event untuk validation failures
+
+        
         return res.status(400).json({
           success: false,
           message: 'Validation failed',
@@ -81,6 +226,46 @@ class TransactionController {
       }
 
       const { title, amount, type, category_id, description, transaction_date } = req.body;
+
+      // Additional security checks
+      const userId = req.user.id;
+      const userIP = req.ip;
+      
+      // Check for suspicious large amounts
+      const numAmount = parseFloat(amount);
+      if (numAmount > 100000000) { // 100 million limit
+
+        return res.status(400).json({
+          success: false,
+          message: 'Amount exceeds security limit',
+          error: 'Security validation failed'
+        });
+      }
+
+      // Rate limiting check - max 5 transactions per minute per user
+      const currentTime = Date.now();
+      const oneMinute = 60 * 1000;
+      
+      if (!global.userTransactionLimits) {
+        global.userTransactionLimits = new Map();
+      }
+      
+      const userKey = `transaction_${userId}`;
+      const userTransactions = global.userTransactionLimits.get(userKey) || [];
+      const recentTransactions = userTransactions.filter(time => currentTime - time < oneMinute);
+      
+      if (recentTransactions.length >= 5) {
+
+        return res.status(429).json({
+          success: false,
+          message: 'Too many transactions. Please wait before creating another transaction.',
+          error: 'Rate limit exceeded'
+        });
+      }
+      
+      // Update rate limit tracking
+      recentTransactions.push(currentTime);
+      global.userTransactionLimits.set(userKey, recentTransactions);
 
       // Validate category exists and type matches
       if (category_id) {
@@ -100,13 +285,33 @@ class TransactionController {
         }
       }
 
+      // Sanitize input data sebelum save ke database
+      const sanitizedTitle = title.replace(/[<>'"]/g, ''); // Remove potentially dangerous characters
+      const sanitizedDescription = description ? description.replace(/[<>'"]/g, '') : null;
+      
+      // Double check amount is valid number
+      const sanitizedAmount = Math.round(parseFloat(amount) * 100) / 100; // Round to 2 decimal places
+      
+      // Validate transaction date
+      const sanitizedDate = transaction_date || moment().format('YYYY-MM-DD');
+      if (!moment(sanitizedDate, 'YYYY-MM-DD', true).isValid()) {
+
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid transaction date format',
+          error: 'Security validation failed'
+        });
+      }
+
+
+
       const newTransaction = await Transaction.create({
-        title,
-        amount: parseFloat(amount),
+        title: sanitizedTitle,
+        amount: sanitizedAmount,
         type,
         category_id: category_id || null,
-        description,
-        transaction_date: transaction_date || moment().format('YYYY-MM-DD'),
+        description: sanitizedDescription,
+        transaction_date: sanitizedDate,
         user_id: req.user.id
       });
 
@@ -131,6 +336,7 @@ class TransactionController {
       // Check validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
+
         return res.status(400).json({
           success: false,
           message: 'Validation failed',
@@ -140,6 +346,7 @@ class TransactionController {
 
       const { id } = req.params;
       const { title, amount, type, category_id, description, transaction_date } = req.body;
+      const userId = req.user.id;
 
       // Check if transaction exists
       const existingTransaction = await Transaction.getById(id);
@@ -150,32 +357,56 @@ class TransactionController {
         });
       }
 
-      // Validate category exists and type matches
-      if (category_id) {
-        const category = await Category.getById(category_id);
-        if (!category) {
-          return res.status(400).json({
-            success: false,
-            message: 'Invalid category ID'
-          });
-        }
+      // Additional security checks for amount
+      const numAmount = parseFloat(amount);
+      if (numAmount < 1000) {
 
-        if (category.type !== type) {
-          return res.status(400).json({
-            success: false,
-            message: `Category type (${category.type}) does not match transaction type (${type})`
-          });
-        }
+        return res.status(400).json({
+          success: false,
+          message: 'Minimum transaction amount is Rp 1,000',
+          error: 'Amount validation failed'
+        });
       }
 
+      if (numAmount > 100000000) {
+
+        return res.status(400).json({
+          success: false,
+          message: 'Amount exceeds security limit',
+          error: 'Security validation failed'
+        });
+      }
+
+      // Sanitize input data
+      const sanitizedTitle = title.replace(/[<>'"]/g, '');
+      const sanitizedDescription = description ? description.replace(/[<>'"]/g, '') : null;
+      const sanitizedAmount = Math.round(numAmount * 100) / 100;
+      const sanitizedDate = transaction_date || moment().format('YYYY-MM-DD');
+
+      // Validate date format
+      if (!moment(sanitizedDate, 'YYYY-MM-DD', true).isValid()) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid transaction date format'
+        });
+      }
+
+
+
       const updatedTransaction = await Transaction.update(id, {
-        title,
-        amount: parseFloat(amount),
+        title: sanitizedTitle,
+        amount: sanitizedAmount,
         type,
-        category_id: category_id || null,
-        description,
-        transaction_date
+        description: sanitizedDescription,
+        transaction_date: sanitizedDate
       });
+
+      if (!updatedTransaction) {
+        return res.status(404).json({
+          success: false,
+          message: 'Failed to update transaction'
+        });
+      }
 
       res.json({
         success: true,
@@ -196,10 +427,22 @@ class TransactionController {
   static async deleteTransaction(req, res) {
     try {
       const { id } = req.params;
+      const userId = req.user.id;
+      const userIP = req.ip;
 
-      // Check if transaction exists
+      // Validate ID parameter
+      if (!id || isNaN(parseInt(id))) {
+
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid transaction ID'
+        });
+      }
+
+      // Check if transaction exists and get details for logging
       const existingTransaction = await Transaction.getById(id);
       if (!existingTransaction) {
+
         return res.status(404).json({
           success: false,
           message: 'Transaction not found'
@@ -217,10 +460,20 @@ class TransactionController {
 
       res.json({
         success: true,
-        message: 'Transaction deleted successfully'
+        message: 'Transaction deleted successfully',
+        data: {
+          deleted_transaction: {
+            id: existingTransaction.id,
+            title: existingTransaction.title,
+            amount: existingTransaction.amount,
+            type: existingTransaction.type,
+            transaction_date: existingTransaction.transaction_date
+          }
+        }
       });
     } catch (error) {
       console.error('Error deleting transaction:', error);
+
       res.status(500).json({
         success: false,
         message: 'Failed to delete transaction',
@@ -383,7 +636,6 @@ class TransactionController {
       const filters = {
         user_id: req.user.id,
         type: req.query.type,
-        category_id: req.query.category_id,
         limit: req.query.limit || 50
       };
 

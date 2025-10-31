@@ -1,6 +1,7 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
+const { deleteOldProfilePhoto } = require('../middleware/upload');
 
 class AuthController {
   // Register new user
@@ -16,7 +17,7 @@ class AuthController {
         });
       }
 
-      const { nama, email, password, url_foto } = req.body;
+      const { nama, email, password, foto_url, foto_filename } = req.body;
 
       // Check if email already exists
       const emailExists = await User.emailExists(email);
@@ -32,7 +33,8 @@ class AuthController {
         nama,
         email,
         password,
-        url_foto
+        url_foto: foto_url || null,
+        foto_filename: foto_filename || null
       });
 
       // Generate JWT token
@@ -184,7 +186,7 @@ class AuthController {
       }
 
       const userId = req.user.id;
-      const { nama, email, url_foto } = req.body;
+      const { nama, email, foto_url, foto_filename } = req.body;
 
       // Check if new email already exists (excluding current user)
       if (email && email !== req.user.email) {
@@ -197,11 +199,20 @@ class AuthController {
         }
       }
 
+      // Get current user data to check for old photo
+      const currentUser = await User.getById(userId);
+      
+      // If new photo uploaded, delete old photo
+      if (foto_filename && currentUser.foto_filename && currentUser.foto_filename !== foto_filename) {
+        deleteOldProfilePhoto(currentUser.foto_filename);
+      }
+
       // Update user profile
       const updatedUser = await User.update(userId, {
         nama,
         email,
-        url_foto
+        url_foto: foto_url || currentUser.url_foto,
+        foto_filename: foto_filename || currentUser.foto_filename
       });
 
       if (!updatedUser) {

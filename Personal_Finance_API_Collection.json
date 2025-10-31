@@ -1,0 +1,744 @@
+{
+  "info": {
+    "name": "Personal Finance API - Complete Collection",
+    "description": "Complete API testing collection for Personal Finance Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_postman_id": "personal-finance-api",
+    "version": {
+      "major": 1,
+      "minor": 0,
+      "patch": 0
+    }
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "exec": [
+          ""
+        ],
+        "type": "text/javascript"
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "exec": [
+          ""
+        ],
+        "type": "text/javascript"
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+
+    {
+      "key": "transaction_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "🏠 Root & Health",
+      "item": [
+        {
+          "name": "Root Endpoint",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/",
+              "host": ["{{base_url}}"],
+              "path": [""]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "health"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🔐 Authentication",
+      "item": [
+        {
+          "name": "Register - JSON (tanpa foto)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('auth_token', response.data.token);",
+                  "    pm.collectionVariables.set('user_id', response.data.user.id);",
+                  "    console.log('Token saved:', response.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Ahmad Nugraha\",\n  \"email\": \"ahmad.nugraha@example.com\",\n  \"password\": \"AhmadPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register - Form Data (dengan foto)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('auth_token', response.data.token);",
+                  "    pm.collectionVariables.set('user_id', response.data.user.id);",
+                  "    console.log('Token saved:', response.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nama",
+                  "value": "Siti Rahayu",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "siti.rahayu@example.com",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "SitiPass123!",
+                  "type": "text"
+                },
+                {
+                  "key": "foto_profile",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('auth_token', response.data.token);",
+                  "    pm.collectionVariables.set('user_id', response.data.user.id);",
+                  "    console.log('Login successful, token saved:', response.data.token);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"ahmad.nugraha@example.com\",\n  \"password\": \"AhmadPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "profile"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile - JSON (tanpa foto)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Ahmad Nugraha Updated\",\n  \"email\": \"ahmad.updated@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "profile"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Profile - Form Data (dengan foto)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "nama",
+                  "value": "Ahmad Nugraha Updated",
+                  "type": "text"
+                },
+                {
+                  "key": "email",
+                  "value": "ahmad.updated@example.com",
+                  "type": "text"
+                },
+                {
+                  "key": "foto_profile",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "profile"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+
+    {
+      "name": "💰 Transactions",
+      "item": [
+        {
+          "name": "Dashboard (Balance + Recent Activity)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/transactions/dashboard",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions", "dashboard"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Transactions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Transaction",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    const response = pm.response.json();",
+                  "    pm.collectionVariables.set('transaction_id', response.data.id);",
+                  "    console.log('Transaction created with ID:', response.data.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Makan siang di restaurant\",\n  \"amount\": 150000,\n  \"description\": \"Makan siang di restaurant yang enak\",\n  \"type\": \"expense\",\n  \"transaction_date\": \"2025-10-31\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Transaction by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions", "{{transaction_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Transaction",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Makan siang di restaurant premium\",\n  \"amount\": 200000,\n  \"description\": \"Makan siang di restaurant premium yang mewah\",\n  \"type\": \"expense\",\n  \"transaction_date\": \"2025-10-31\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions", "{{transaction_id}}"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Transaction",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/transactions/{{transaction_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions", "{{transaction_id}}"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "📈 Reports & Filters",
+      "item": [
+        {
+          "name": "Monthly Report",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/transactions/report/monthly?year=2025&month=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions", "report", "monthly"],
+              "query": [
+                {
+                  "key": "year",
+                  "value": "2025"
+                },
+                {
+                  "key": "month",
+                  "value": "10"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filter by Date Range",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/transactions?start_date=2025-10-01&end_date=2025-10-31",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions"],
+              "query": [
+                {
+                  "key": "start_date",
+                  "value": "2025-10-01"
+                },
+                {
+                  "key": "end_date",
+                  "value": "2025-10-31"
+                }
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Filter by Type",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/transactions?tipe=pengeluaran",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions"],
+              "query": [
+                {
+                  "key": "tipe",
+                  "value": "pengeluaran"
+                }
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "🚫 Error Testing",
+      "item": [
+        {
+          "name": "Login - Invalid Credentials",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"wrong@email.com\",\n  \"password\": \"wrongpassword\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "login"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Register - Duplicate Email",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"Test User\",\n  \"email\": \"ahmad.nugraha@example.com\",\n  \"password\": \"TestPass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Unauthorized Request",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "profile"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid Token",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer invalid_token_here"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/api/auth/profile",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "profile"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Directory Access - Uploads",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/uploads",
+              "host": ["{{base_url}}"],
+              "path": ["uploads"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Directory Access - Profile Photos",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/uploads/profile-photos",
+              "host": ["{{base_url}}"],
+              "path": ["uploads", "profile-photos"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Invalid File Access",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/uploads/profile-photos/invalid-file.jpg",
+              "host": ["{{base_url}}"],
+              "path": ["uploads", "profile-photos", "invalid-file.jpg"]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "📝 Validation Testing",
+      "item": [
+        {
+          "name": "Register - Missing Fields",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"\",\n  \"email\": \"invalid-email\",\n  \"password\": \"123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "auth", "register"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Category - Invalid Type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nama\": \"\",\n  \"tipe\": \"invalid_type\",\n  \"deskripsi\": \"\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/categories",
+              "host": ["{{base_url}}"],
+              "path": ["api", "categories"]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Transaction - Invalid Amount",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{auth_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"\",\n  \"amount\": -100,\n  \"description\": \"\",\n  \"type\": \"invalid_type\",\n  \"transaction_date\": \"invalid-date\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/transactions",
+              "host": ["{{base_url}}"],
+              "path": ["api", "transactions"]
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}
