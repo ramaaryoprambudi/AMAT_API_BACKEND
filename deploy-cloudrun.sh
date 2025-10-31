@@ -119,7 +119,7 @@ build_and_deploy() {
     fi
     
     # Build and deploy using Cloud Build
-    gcloud builds submit --config cloudbuild.yaml --substitutions=_REGION=$REGION,_SERVICE_NAME=$SERVICE_NAME
+    gcloud builds submit --config cloudbuild.yaml --substitutions=_REGION=$REGION,_SERVICE_NAME=$SERVICE_NAME,_ARTIFACT_NAME=rest-api-amat-apk
     
     print_success "Application deployed successfully"
 }
