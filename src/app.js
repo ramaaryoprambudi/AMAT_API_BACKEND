@@ -8,7 +8,7 @@ const { errorHandler, notFound } = require('./middleware/errorHandler');
 const { directoryProtection, handleUploadsRoot, logFileAccess } = require('./middleware/directoryProtection');
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 8080;
 
 // Security middleware
 app.use(helmet());
@@ -63,16 +63,8 @@ app.use(errorHandler);
 // Start server
 const startServer = async () => {
   try {
-    // Test database connection
-    const dbConnected = await db.testConnection();
-    
-    if (!dbConnected) {
-      console.error('❌ Failed to connect to database. Exiting...');
-      process.exit(1);
-    }
-
-    // Start HTTP server
-    app.listen(PORT, () => {
+    // Start HTTP server first (required for Cloud Run)
+    const server = app.listen(PORT, '0.0.0.0', async () => {
       if (process.env.NODE_ENV !== 'production') {
         console.log('\n🚀 Personal Finance API Server Started');
         console.log(`📍 Server running on port ${PORT}`);
@@ -81,6 +73,20 @@ const startServer = async () => {
         console.log(`💚 Health Check: http://localhost:${PORT}/api/health`);
         console.log(` Transactions: http://localhost:${PORT}/api/transactions`);
         console.log('\n✅ Server is ready for connections!\n');
+      }
+      
+      // Test database connection after server starts
+      try {
+        const dbConnected = await db.testConnection();
+        if (!dbConnected) {
+          console.error('⚠️ Database connection failed, but server is running');
+        } else {
+          if (process.env.NODE_ENV !== 'production') {
+            console.log('✅ Database connected successfully');
+          }
+        }
+      } catch (dbError) {
+        console.error('⚠️ Database connection error:', dbError.message);
       }
     });
 
