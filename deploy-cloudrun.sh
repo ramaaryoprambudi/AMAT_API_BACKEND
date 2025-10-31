@@ -13,10 +13,10 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-PROJECT_ID=""
+PROJECT_ID="bara-f786e"
 REGION="asia-southeast2"
 SERVICE_NAME="personal-finance-api"
-DB_INSTANCE_NAME="personal-finance-db"
+DB_INSTANCE_NAME="amat-sql"
 
 # Functions
 print_status() {
