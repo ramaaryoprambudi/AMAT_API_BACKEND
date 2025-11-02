@@ -1,0 +1,10 @@
+node_modules/
+*.log
+.env
+.DS_Store
+uploads/
+*.tmp
+*.swp
+.vscode/
+dist/
+build/
